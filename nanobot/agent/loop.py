@@ -19,6 +19,7 @@ from typing import Any
 from nanobot.agent import LocalLLMProvider, LLMResponse
 from nanobot.agent.tools import ToolRegistry
 from nanobot.agent.tools.filesystem import ReadFileTool, WriteFileTool, EditFileTool, ListDirTool
+from nanobot.agent.tools.image import DescribeImageTool
 from nanobot.agent.tools.shell import ExecTool
 from nanobot.memory import PMCMemory
 from nanobot.session import SessionManager
@@ -74,6 +75,7 @@ class AgentLoop:
         self.tools.register(EditFileTool())
         self.tools.register(ListDirTool())
         self.tools.register(ExecTool(working_dir=str(workspace)))
+        self.tools.register(DescribeImageTool())
 
         # Initialize PMC memory
         db_path = workspace / "pmc.db"
@@ -127,6 +129,7 @@ You are nanobot, a helpful AI assistant running locally. You have access to tool
 - edit_file: Edit files by replacing text
 - list_dir: List directory contents
 - exec: Execute shell commands
+- describe_image: Describe the contents of an image file using a vision model
 
 ## Current Time
 {now}
@@ -169,6 +172,7 @@ You are nanobot, a helpful AI assistant running locally. You have access to tool
 
         # ── PROCESS: agent loop ──
         final = ""
+        executed_calls: set[str] = set()  # deduplicate repeated tool calls
         for _ in range(self.max_iterations):
             response = await self.provider.chat(
                 messages=messages,
@@ -180,6 +184,13 @@ You are nanobot, a helpful AI assistant running locally. You have access to tool
             if not response.has_tool_calls:
                 final = response.content or "（无响应）"
                 break
+
+            # Deduplicate: if model repeats a tool call already executed, stop looping
+            call_sig = "|".join(f"{tc.name}:{json.dumps(tc.arguments, sort_keys=True)}" for tc in response.tool_calls)
+            if call_sig in executed_calls:
+                final = response.content or "（无响应）"
+                break
+            executed_calls.add(call_sig)
 
             # Process tool calls
             assistant_msg: dict[str, Any] = {

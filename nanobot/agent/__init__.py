@@ -98,6 +98,26 @@ class LocalLLMProvider:
                     arguments=args,
                 ))
 
+        # Fallback: some models (e.g. llama3.1) emit tool calls as raw JSON in content,
+        # optionally prefixed with <|python_tag|>
+        if not tool_calls and message.get("content"):
+            content = message["content"].strip()
+            if content.startswith("<|python_tag|>"):
+                content = content[len("<|python_tag|>"):].strip()
+            if content.startswith("{") and '"name"' in content:
+                try:
+                    parsed = json.loads(content)
+                    if isinstance(parsed, dict) and "name" in parsed:
+                        args = parsed.get("parameters") or parsed.get("arguments") or {}
+                        tool_calls.append(ToolCall(
+                            id=f"call_0",
+                            name=parsed["name"],
+                            arguments=args,
+                        ))
+                        message["content"] = None  # consumed as tool call
+                except (json.JSONDecodeError, KeyError):
+                    pass
+
         usage = {}
         if data.get("usage"):
             usage = {

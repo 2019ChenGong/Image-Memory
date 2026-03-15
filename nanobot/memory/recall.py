@@ -53,11 +53,12 @@ class RecallResult:
                 )
             parts.append("**Knowledge (semantic memory):**\n" + "\n".join(items))
 
-        if self.episodic:
+        successful = [e for e in self.episodic if e.outcome == "success"]
+        if successful:
             items = []
-            for e in self.episodic:
+            for e in successful:
                 items.append(
-                    f"  - [{e.outcome}] {e.query[:80]} → {e.summary[:120]}"
+                    f"  - {e.query[:80]} → {e.summary[:120]}"
                 )
             parts.append("**Recent experience (episodic memory):**\n" + "\n".join(items))
 
