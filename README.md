@@ -13,7 +13,7 @@ python -m nanobot onboard
 python -m nanobot chat
 
 # single message
-python -m nanobot chat -m "列出当前目录的文件"
+python -m nanobot chat -m "list current files"
 
 # check status
 python -m nanobot status

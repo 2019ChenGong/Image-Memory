@@ -76,7 +76,7 @@ class AgentLoop:
         self.tools.register(ExecTool(working_dir=str(workspace)))
 
         # Initialize PMC memory
-        db_path = Path.home() / ".nanobot" / "memory" / "pmc.db"
+        db_path = workspace / "pmc.db"
         self.pmc = PMCMemory(
             db_path=db_path,
             llm_call=self._llm_for_consolidation,
@@ -155,6 +155,8 @@ You are nanobot, a helpful AI assistant running locally. You have access to tool
         # ── RECALL: retrieve relevant memories ──
         recalled = self.pmc.recall(content)
         memory_prompt = recalled.format_for_prompt()
+        if memory_prompt:
+            print(f"\n[PMC] 已加载记忆:\n{memory_prompt}\n")
 
         # Build messages
         messages: list[dict[str, Any]] = [
